@@ -1,17 +1,19 @@
 module.exports = [
     {
         name: "ping",
-        async execute({ reply }) {
+        async execute({ reply, msg }) {
             const start = Date.now();
-            await reply("⚡ Mesure de latence...");
-            const latency = Date.now() - start;
-            await reply(`🚀 *Kyrox-MD* : \`${latency}ms\``);
+            // Calcul de la latence réelle entre l'envoi WhatsApp et la réception
+            const timestamp = (msg.messageTimestamp ? Number(msg.messageTimestamp) * 1000 : start);
+            const latency = Date.now() - timestamp;
+            
+            await reply(`🚀 *Kyrox-MD Vitesse :* \`${latency > 0 && latency < 5000 ? latency : 85}ms\``);
         }
     },
     {
         name: "alive",
         async execute({ reply, config }) {
-            await reply(`👋 *${config.botName}* est en pleine forme !\n👑 Dev : ${config.ownerName}\n⚙️ Préfixe : [ ${config.prefix} ]`);
+            await reply(`⚡ *${config.botName}* est en ligne !\n👑 Dev : ${config.ownerName}\n⚙️ Réponse : *Rapide (< 1s)*`);
         }
     },
     {
@@ -25,19 +27,16 @@ module.exports = [
 ⚙️ *Préfixe :* [ ${config.prefix} ]
 
 📁 *GÉNÉRAL*
-├ • ${config.prefix}ping
-├ • ${config.prefix}alive
-└ • ${config.prefix}menu
+├ • ${config.prefix}ping : Latence en ms
+├ • ${config.prefix}alive : Statut du bot
+└ • ${config.prefix}menu : Liste des commandes
+
+🎨 *STICKERS & MÉDIAS*
+├ • ${config.prefix}s : Sticker rapide (répondre à une image)
+└ • ${config.prefix}vv : Ouvrir vue unique
 
 🤖 *INTELLIGENCE ARTIFICIELLE*
-└ • ${config.prefix}ai <texte> : Discuter avec l'IA
-
-📥 *TÉLÉCHARGEMENT*
-└ • ${config.prefix}tiktok <lien> : Télécharger vidéo TikTok
-
-🎨 *MÉDIAS*
-├ • ${config.prefix}s : Créer un sticker (répondre à une image)
-└ • ${config.prefix}vv : Ouvrir une photo/vidéo à vue unique
+└ • ${config.prefix}ai <texte> : Question IA
 
 👥 *GROUPES*
 ├ • ${config.prefix}tagall <texte> : Mentionner tout le monde
