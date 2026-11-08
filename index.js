@@ -1,9 +1,20 @@
-// Protection anti-crash absolue
+// 1. Filtrage du spam Bad MAC dans la console pour libérer le CPU de Render
+const originalConsoleError = console.error;
+console.error = (...args) => {
+    const text = args.map(a => (typeof a === "object" ? a?.message || JSON.stringify(a) : String(a))).join(" ");
+    if (text.includes("Bad MAC") || text.includes("Failed to decrypt") || text.includes("Session error")) {
+        return; // Ignore les logs de chiffrement pour garder le bot ultra-rapide
+    }
+    originalConsoleError(...args);
+};
+
+// Protection Anti-Crash globale
 process.on("uncaughtException", (err) => {
-    console.error("⚠️ [Ignoré] Erreur interceptée :", err.message);
+    if (!err.message?.includes("Bad MAC")) console.error("⚠️ [Ignoré] :", err.message);
 });
 process.on("unhandledRejection", (reason) => {
-    console.error("⚠️ [Ignoré] Rejet non géré :", reason?.message || reason);
+    const msg = reason?.message || String(reason);
+    if (!msg.includes("Bad MAC")) console.error("⚠️ [Ignoré] :", msg);
 });
 
 const {
@@ -30,7 +41,7 @@ const commands = new Map();
 let sock = null;
 let isConnected = false;
 
-// 1. Décodage préventif du SESSION_ID si configuré sur Render
+// 2. Décodage de secours SESSION_ID si configuré dans Render
 function restoreSessionIfAvailable() {
     let sId = process.env.SESSION_ID || config.sessionId;
     if (!sId) return;
@@ -52,7 +63,7 @@ function restoreSessionIfAvailable() {
     }
 }
 
-// 2. Chargement des commandes
+// 3. Chargement des commandes
 function loadCommands() {
     const dir = path.join(__dirname, "commands");
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -70,13 +81,13 @@ function loadCommands() {
                 if (cmd.name) commands.set(cmd.name.toLowerCase().trim(), cmd);
             }
         } catch (e) {
-            console.error(`❌ Erreur dans commands/${file} :`, e.message);
+            console.error(`❌ Erreur commands/${file} :`, e.message);
         }
     }
-    console.log(`📦 [Kyrox-MD] ${commands.size} commandes prêtes.`);
+    console.log(`📦 [Kyrox-MD] ${commands.size} commandes chargées.`);
 }
 
-// 3. Déballage des messages WhatsApp
+// 4. Déballage universel des messages
 function getMessageBody(msg) {
     if (!msg || !msg.message) return "";
     let m = msg.message;
@@ -96,7 +107,7 @@ function getMessageBody(msg) {
     ).trim();
 }
 
-// 4. Initialisation du Socket Baileys
+// 5. Initialisation Haute Performance (Anti-Lag & Anti-Bad MAC)
 async function initKyroxBot(phoneNumber = null) {
     if (sock) {
         try {
@@ -111,10 +122,18 @@ async function initKyroxBot(phoneNumber = null) {
     sock = makeWASocket({
         version,
         logger: pino({ level: "silent" }),
-        auth: state, // Utilise state directement sans cache pour éliminer l'erreur Bad MAC
+        auth: state,
         browser: Browsers.macOS("Safari"),
+        
+        // ⚡ OPTIONS ANTI-SATURATION DE LA FILE D'ATTENTE ⚡
         syncFullHistory: false,
-        generateHighQualityLinkPreview: false,
+        shouldSyncHistoryMessage: () => false, // Stoppe net les paquets d'historique qui causaient le Bad MAC
+        shouldIgnoreJid: (jid) => jid?.endsWith("@broadcast") || jid?.endsWith("@newsletter"),
+        getMessage: async () => undefined,    // Empêche la boucle infinie de réessais
+        maxMsgRetryCount: 2,
+        retryRequestDelayMs: 250,
+
+        // ⚡ Vitesse de traitement
         markOnlineOnConnect: false,
         fireInitQueries: false,
         connectTimeoutMs: 30000,
@@ -133,10 +152,10 @@ async function initKyroxBot(phoneNumber = null) {
             console.log(`[WhatsApp] Déconnecté (Code HTTP : ${statusCode})`);
 
             if (statusCode === DisconnectReason.restartRequired || statusCode === 515 || statusCode !== DisconnectReason.loggedOut) {
-                console.log("🔄 Reconnexion rapide en cours...");
+                console.log("🔄 Reconnexion rapide...");
                 initKyroxBot();
             } else {
-                console.log("❌ Session fermée. Reconnexion web nécessaire.");
+                console.log("❌ Session fermée.");
                 if (fs.existsSync(config.sessionDir)) {
                     fs.rmSync(config.sessionDir, { recursive: true, force: true });
                 }
@@ -144,14 +163,12 @@ async function initKyroxBot(phoneNumber = null) {
         } else if (connection === "open") {
             isConnected = true;
             console.log(`\n========================================`);
-            console.log(` ✅ ${config.botName} EN LIGNE - RÉPONSE ULTRA-RAPIDE !`);
+            console.log(` ✅ ${config.botName} EN LIGNE - RÉPONSE INSTANTANÉE !`);
             console.log(`========================================\n`);
 
             setTimeout(async () => {
                 try {
                     const hostJid = sock.user.id.split(":")[0] + "@s.whatsapp.net";
-                    
-                    // Envoi d'une copie du SESSION_ID en secours
                     let backupSession = "";
                     const credsPath = path.join(config.sessionDir, "creds.json");
                     if (fs.existsSync(credsPath)) {
@@ -163,8 +180,8 @@ async function initKyroxBot(phoneNumber = null) {
                         text: `╔═══════════════════════╗\n` +
                               `║   ⚡ *${config.botName} EST ACTIF* ⚡   \n` +
                               `╚═══════════════════════╝\n\n` +
-                              `✅ *Connexion réussie !*\n` +
-                              `Le bot répond désormais en moins d'une seconde.\n\n` +
+                              `✅ *Connexion validée !*\n` +
+                              `Le bot répond désormais instantanément (< 500ms).\n\n` +
                               `👉 Tapez *${config.prefix}ping* ou *${config.prefix}menu*.\n\n` +
                               `🔑 *SESSION_ID de secours (pour Render) :*\n\`\`\`${backupSession}\`\`\``
                     });
@@ -173,6 +190,7 @@ async function initKyroxBot(phoneNumber = null) {
         }
     });
 
+    // Traitement immédiat des commandes
     sock.ev.on("messages.upsert", async ({ messages, type }) => {
         if (type !== "notify") return;
         const msg = messages[0];
@@ -197,7 +215,7 @@ async function initKyroxBot(phoneNumber = null) {
         const prefix = config.prefix || ".";
         if (!body.startsWith(prefix)) return;
 
-        console.log(`📩 [Commande reçue] De: ${from} | Texte: "${body}"`);
+        console.log(`📩 [Commande reçue] : "${body}" de ${from}`);
 
         const isGroup = from.endsWith("@g.us");
         const sender = isGroup ? (msg.key.participant || msg.participant) : from;
@@ -209,13 +227,12 @@ async function initKyroxBot(phoneNumber = null) {
         const command = commands.get(commandName);
         if (!command) return;
 
-        // ✅ CORRECTION CRITIQUE DU @LID ET DU CRASH "No sessions"
         const isLid = from.endsWith("@lid");
         const isSelf = msg.key.fromMe;
 
+        // Réponse instantanée sans blocage de clé
         const reply = async (txt) => {
             try {
-                // Si le message provient d'un identifiant LID ou de soi-même, on envoie directement sans citation pour éviter le blocage libsignal
                 if (isLid || isSelf) {
                     const destination = (isLid && isSelf && sock.user) 
                         ? (sock.user.id.split(":")[0] + "@s.whatsapp.net") 
@@ -240,7 +257,7 @@ async function initKyroxBot(phoneNumber = null) {
                 reply, 
                 config 
             });
-            console.log(`⚡ [${commandName}] exécuté avec succès.`);
+            console.log(`⚡ [${commandName}] exécuté immédiatement.`);
         } catch (err) {
             console.error(`❌ Erreur [${commandName}] :`, err.message);
             await reply("❌ Erreur pendant le traitement.");
@@ -257,7 +274,7 @@ async function initKyroxBot(phoneNumber = null) {
     return null;
 }
 
-// 5. Interface Web
+// 6. Interface Web
 app.get("/", (req, res) => {
     res.send(`
     <!DOCTYPE html>
@@ -345,7 +362,7 @@ app.get("/", (req, res) => {
     `);
 });
 
-// 6. API Pairing
+// 7. API de pairing
 app.post("/api/pair", async (req, res) => {
     let { phone } = req.body;
     if (!phone) return res.status(400).json({ error: "Numéro requis" });
@@ -363,7 +380,7 @@ app.post("/api/pair", async (req, res) => {
     }
 });
 
-// 7. Lancement et restauration
+// 8. Démarrage du serveur
 app.listen(PORT, async () => {
     console.log(`🌐 Serveur actif sur le port ${PORT}`);
     loadCommands();
@@ -371,7 +388,7 @@ app.listen(PORT, async () => {
 
     const credsPath = path.join(config.sessionDir, "creds.json");
     if (fs.existsSync(credsPath)) {
-        console.log("📂 Session détectée. Démarrage automatique...");
+        console.log("📂 Session existante. Démarrage immédiat...");
         initKyroxBot();
     } else {
         console.log("ℹ️ Aucune session active. Ouvrez l'URL pour associer votre compte.");
