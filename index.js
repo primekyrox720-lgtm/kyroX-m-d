@@ -1,20 +1,20 @@
-// 1. Filtrage du spam Bad MAC dans la console pour libérer le CPU de Render
+// 1. Filtrage des erreurs de chiffrement secondaires pour alléger la console et le CPU
 const originalConsoleError = console.error;
 console.error = (...args) => {
     const text = args.map(a => (typeof a === "object" ? a?.message || JSON.stringify(a) : String(a))).join(" ");
     if (text.includes("Bad MAC") || text.includes("Failed to decrypt") || text.includes("Session error")) {
-        return; // Ignore les logs de chiffrement pour garder le bot ultra-rapide
+        return;
     }
     originalConsoleError(...args);
 };
 
 // Protection Anti-Crash globale
 process.on("uncaughtException", (err) => {
-    if (!err.message?.includes("Bad MAC")) console.error("⚠️ [Ignoré] :", err.message);
+    if (!err.message?.includes("Bad MAC")) console.error("⚠️ [Erreur interceptée] :", err.message);
 });
 process.on("unhandledRejection", (reason) => {
     const msg = reason?.message || String(reason);
-    if (!msg.includes("Bad MAC")) console.error("⚠️ [Ignoré] :", msg);
+    if (!msg.includes("Bad MAC")) console.error("⚠️ [Rejet intercepté] :", msg);
 });
 
 const {
@@ -63,7 +63,7 @@ function restoreSessionIfAvailable() {
     }
 }
 
-// 3. Chargement des commandes
+// 3. Chargement dynamique des commandes
 function loadCommands() {
     const dir = path.join(__dirname, "commands");
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -87,7 +87,7 @@ function loadCommands() {
     console.log(`📦 [Kyrox-MD] ${commands.size} commandes chargées.`);
 }
 
-// 4. Déballage universel des messages
+// 4. Extraction universelle du message (Déballage des conteneurs WhatsApp)
 function getMessageBody(msg) {
     if (!msg || !msg.message) return "";
     let m = msg.message;
@@ -107,7 +107,7 @@ function getMessageBody(msg) {
     ).trim();
 }
 
-// 5. Initialisation Haute Performance (Anti-Lag & Anti-Bad MAC)
+// 5. Initialisation Haute Performance (Réception Instantanée)
 async function initKyroxBot(phoneNumber = null) {
     if (sock) {
         try {
@@ -125,19 +125,16 @@ async function initKyroxBot(phoneNumber = null) {
         auth: state,
         browser: Browsers.macOS("Safari"),
         
-        // ⚡ OPTIONS ANTI-SATURATION DE LA FILE D'ATTENTE ⚡
+        // ⚡ OPTIMISATIONS POUR FORCER LA LIVRAISON INSTANTANÉE ⚡
+        markOnlineOnConnect: true, // Annonce le bot comme connecté immédiatement aux serveurs
         syncFullHistory: false,
-        shouldSyncHistoryMessage: () => false, // Stoppe net les paquets d'historique qui causaient le Bad MAC
-        shouldIgnoreJid: (jid) => jid?.endsWith("@broadcast") || jid?.endsWith("@newsletter"),
-        getMessage: async () => undefined,    // Empêche la boucle infinie de réessais
-        maxMsgRetryCount: 2,
-        retryRequestDelayMs: 250,
-
-        // ⚡ Vitesse de traitement
-        markOnlineOnConnect: false,
-        fireInitQueries: false,
+        shouldSyncHistoryMessage: () => false, // Coupe la file d'attente d'historique lourd
+        shouldIgnoreJid: (jid) => jid?.endsWith("@newsletter"),
+        getMessage: async () => undefined,
+        
+        // Garde le tunnel WebSocket actif en continu
+        keepAliveIntervalMs: 10000,
         connectTimeoutMs: 30000,
-        keepAliveIntervalMs: 15000,
         defaultQueryTimeoutMs: 0
     });
 
@@ -166,6 +163,11 @@ async function initKyroxBot(phoneNumber = null) {
             console.log(` ✅ ${config.botName} EN LIGNE - RÉPONSE INSTANTANÉE !`);
             console.log(`========================================\n`);
 
+            // ⚡ Forcer la présence en ligne pour que WhatsApp route les messages sans délai
+            try {
+                await sock.sendPresenceUpdate("available");
+            } catch (e) {}
+
             setTimeout(async () => {
                 try {
                     const hostJid = sock.user.id.split(":")[0] + "@s.whatsapp.net";
@@ -181,7 +183,7 @@ async function initKyroxBot(phoneNumber = null) {
                               `║   ⚡ *${config.botName} EST ACTIF* ⚡   \n` +
                               `╚═══════════════════════╝\n\n` +
                               `✅ *Connexion validée !*\n` +
-                              `Le bot répond désormais instantanément (< 500ms).\n\n` +
+                              `Le flux de réception instantanée est activé.\n\n` +
                               `👉 Tapez *${config.prefix}ping* ou *${config.prefix}menu*.\n\n` +
                               `🔑 *SESSION_ID de secours (pour Render) :*\n\`\`\`${backupSession}\`\`\``
                     });
@@ -190,7 +192,7 @@ async function initKyroxBot(phoneNumber = null) {
         }
     });
 
-    // Traitement immédiat des commandes
+    // Écoute des messages
     sock.ev.on("messages.upsert", async ({ messages, type }) => {
         if (type !== "notify") return;
         const msg = messages[0];
@@ -230,7 +232,7 @@ async function initKyroxBot(phoneNumber = null) {
         const isLid = from.endsWith("@lid");
         const isSelf = msg.key.fromMe;
 
-        // Réponse instantanée sans blocage de clé
+        // Réponse immédiate
         const reply = async (txt) => {
             try {
                 if (isLid || isSelf) {
@@ -274,7 +276,7 @@ async function initKyroxBot(phoneNumber = null) {
     return null;
 }
 
-// 6. Interface Web
+// 6. Interface Web Xtreme-XMD
 app.get("/", (req, res) => {
     res.send(`
     <!DOCTYPE html>
@@ -380,7 +382,7 @@ app.post("/api/pair", async (req, res) => {
     }
 });
 
-// 8. Démarrage du serveur
+// 8. Démarrage du serveur et détection de session
 app.listen(PORT, async () => {
     console.log(`🌐 Serveur actif sur le port ${PORT}`);
     loadCommands();
