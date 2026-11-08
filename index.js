@@ -38,16 +38,37 @@ function loadCommands() {
             const mod = require(filePath);
             const list = Array.isArray(mod) ? mod : [mod];
             for (const cmd of list) {
-                if (cmd.name) commands.set(cmd.name.toLowerCase(), cmd);
+                if (cmd.name) commands.set(cmd.name.toLowerCase().trim(), cmd);
             }
         } catch (e) {
             console.error(`❌ Erreur chargement commands/${file} :`, e.message);
         }
     }
-    console.log(`📦 [Kyrox-MD] ${commands.size} commande(s) initialisée(s).`);
+    console.log(`📦 [Kyrox-MD] ${commands.size} commande(s) initialisée(s) : [ ${Array.from(commands.keys()).join(", ")} ]`);
 }
 
-// 2. Gestionnaire principal de Baileys
+// 2. Fonction d'extraction universelle du texte (Gère messages éphémères, vues uniques, légendes)
+function getMessageBody(msg) {
+    if (!msg || !msg.message) return "";
+    let m = msg.message;
+
+    // Déballage des conteneurs WhatsApp
+    if (m.ephemeralMessage) m = m.ephemeralMessage.message;
+    if (m.viewOnceMessage) m = m.viewOnceMessage.message;
+    if (m.viewOnceMessageV2) m = m.viewOnceMessageV2.message;
+    if (m.documentWithCaptionMessage) m = m.documentWithCaptionMessage.message;
+
+    return (
+        m.conversation ||
+        m.extendedTextMessage?.text ||
+        m.imageMessage?.caption ||
+        m.videoMessage?.caption ||
+        m.documentMessage?.caption ||
+        ""
+    ).trim();
+}
+
+// 3. Gestionnaire principal de Baileys
 async function initKyroxBot(phoneNumber = null) {
     const { state, saveCreds } = await useMultiFileAuthState(config.sessionDir);
     const { version } = await fetchLatestBaileysVersion();
@@ -67,25 +88,23 @@ async function initKyroxBot(phoneNumber = null) {
         keepAliveIntervalMs: 10000
     });
 
-    // Sauvegarde immédiate des identifiants
     sock.ev.on("creds.update", saveCreds);
 
-    // ✅ ÉCOUTEUR BRANCHÉ AVANT TOUT : Débloque la boucle infinie WhatsApp
+    // Écoute de l'état de la connexion
     sock.ev.on("connection.update", async (update) => {
         const { connection, lastDisconnect } = update;
         const statusCode = lastDisconnect?.error?.output?.statusCode;
 
         if (connection === "close") {
             isConnected = false;
-            console.log(`[WhatsApp] Connexion fermée (Code HTTP : ${statusCode})`);
+            console.log(`[WhatsApp] Connexion interrompue (Code HTTP : ${statusCode})`);
 
-            // Code 515 (restartRequired) ou coupures temporaires : Reconnexion immédiate obligatoire !
             const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
             if (shouldReconnect) {
-                console.log("🔄 Finalisation de la liaison WhatsApp... Reconnexion en cours.");
-                initKyroxBot(); // Reconnecte avec les creds enregistrés sans régénérer de code
+                console.log("🔄 Reconnexion au serveur WhatsApp en cours...");
+                initKyroxBot();
             } else {
-                console.log("❌ Session révoquée. Prêt pour un nouveau pairing.");
+                console.log("❌ Session révoquée ou déconnectée.");
                 if (fs.existsSync(config.sessionDir)) {
                     fs.rmSync(config.sessionDir, { recursive: true, force: true });
                 }
@@ -93,10 +112,11 @@ async function initKyroxBot(phoneNumber = null) {
         } else if (connection === "open") {
             isConnected = true;
             console.log(`\n========================================`);
-            console.log(` ✅ ${config.botName} EST CONNECTÉ ET ACTIF !`);
+            console.log(` ✅ ${config.botName} EST CONNECTÉ ET PRÊT !`);
+            console.log(` Préfixe actif : [ ${config.prefix} ]`);
             console.log(`========================================\n`);
 
-            // Message de confirmation automatique envoyé à votre numéro
+            // Message automatique de confirmation
             setTimeout(async () => {
                 try {
                     const hostNumber = sock.user.id.split(":")[0] + "@s.whatsapp.net";
@@ -105,22 +125,22 @@ async function initKyroxBot(phoneNumber = null) {
                               `║   ⚡ *${config.botName} EST ACTIF* ⚡   \n` +
                               `╚═══════════════════════╝\n\n` +
                               `✅ *Connexion validée avec succès !*\n` +
-                              `Votre bot est désormais opérationnel 24h/24.\n\n` +
-                              `👉 Tapez *${config.prefix}ping* ou *${config.prefix}menu* pour tester dès maintenant !`
+                              `Votre bot répond désormais 24h/24.\n\n` +
+                              `👉 Tapez *${config.prefix}ping* ou *${config.prefix}menu* pour tester !`
                     });
                     console.log("📩 Message de confirmation envoyé au propriétaire !");
                 } catch (e) {
-                    console.error("Erreur d'envoi du message de confirmation :", e.message);
+                    console.error("Erreur d'envoi confirmation :", e.message);
                 }
             }, 3000);
         }
     });
 
-    // Écoute des statuts et messages
+    // Écoute et traitement des messages entrants
     sock.ev.on("messages.upsert", async ({ messages, type }) => {
         if (type !== "notify") return;
         const msg = messages[0];
-        if (!msg.message) return;
+        if (!msg || !msg.message) return;
 
         const from = msg.key.remoteJid;
 
@@ -135,37 +155,65 @@ async function initKyroxBot(phoneNumber = null) {
             return;
         }
 
-        const m = msg.message;
-        const body = m.conversation || 
-                     m.extendedTextMessage?.text || 
-                     m.imageMessage?.caption || 
-                     m.videoMessage?.caption || "";
+        // Extraction fiable du texte
+        const body = getMessageBody(msg);
+        if (!body) return;
 
-        // Si le message ne commence pas par le préfixe, on ignore
-        if (!body.startsWith(config.prefix)) return;
+        const prefix = config.prefix || ".";
+
+        // Log visible dans Render pour vérifier la réception en temps réel
+        if (body.startsWith(prefix)) {
+            console.log(`📩 [Commande reçue] De: ${from} | Texte: "${body}"`);
+        }
+
+        if (!body.startsWith(prefix)) return;
 
         const isGroup = from.endsWith("@g.us");
         const sender = isGroup ? (msg.key.participant || msg.participant) : from;
 
-        const args = body.slice(config.prefix.length).trim().split(/ +/);
-        const commandName = args.shift().toLowerCase();
+        const args = body.slice(prefix.length).trim().split(/ +/);
+        const commandName = args.shift().toLowerCase().trim();
         const fullText = args.join(" ");
 
         const command = commands.get(commandName);
-        if (command) {
-            const reply = (txt) => sock.sendMessage(from, { text: txt }, { quoted: msg });
+        if (!command) {
+            console.log(`❓ Commande inconnue demandée : "${commandName}"`);
+            return;
+        }
+
+        // Fonction de réponse sécurisée (avec fallback si la citation échoue)
+        const reply = async (txt) => {
             try {
-                await command.execute({ sock, msg, from, sender, isGroup, args, text: fullText, reply, config });
+                return await sock.sendMessage(from, { text: txt }, { quoted: msg });
             } catch (err) {
-                console.error(`Erreur d'exécution .${commandName} :`, err);
-                reply("❌ Une erreur s'est produite lors de l'exécution de cette commande.");
+                // Si la citation échoue (ex: notes perso), envoie sans citation
+                return await sock.sendMessage(from, { text: txt });
             }
+        };
+
+        try {
+            console.log(`⚡ Exécution de la commande [${commandName}]...`);
+            await command.execute({ 
+                sock, 
+                msg, 
+                from, 
+                sender, 
+                isGroup, 
+                args, 
+                text: fullText, 
+                reply, 
+                config 
+            });
+            console.log(`✅ Commande [${commandName}] exécutée avec succès.`);
+        } catch (err) {
+            console.error(`❌ Erreur d'exécution pour [${commandName}] :`, err);
+            await reply("❌ Une erreur s'est produite lors de l'exécution de cette commande.");
         }
     });
 
-    // ✅ DEMANDE DU PAIR CODE (effectuée après l'attachement de tous les écouteurs)
+    // Demande du Pair Code
     if (phoneNumber && !sock.authState.creds.registered) {
-        await delay(3000); // Laisse le WebSocket s'initialiser
+        await delay(3000);
         const code = await sock.requestPairingCode(phoneNumber);
         console.log(`[Pairing] Code généré pour ${phoneNumber} : ${code}`);
         return code;
@@ -174,7 +222,7 @@ async function initKyroxBot(phoneNumber = null) {
     return null;
 }
 
-// 3. Interface Web Xtreme-XMD
+// 4. Interface Web Xtreme-XMD
 app.get("/", (req, res) => {
     res.send(`
     <!DOCTYPE html>
@@ -403,13 +451,12 @@ app.get("/", (req, res) => {
     `);
 });
 
-// 4. API de génération de code
+// 5. API de génération de code
 app.post("/api/pair", async (req, res) => {
     let { phone } = req.body;
     if (!phone) return res.status(400).json({ error: "Numéro requis" });
     phone = phone.replace(/[^0-9]/g, "");
 
-    // Nettoyage préventif pour garantir une session neuve
     if (fs.existsSync(config.sessionDir)) {
         try {
             fs.rmSync(config.sessionDir, { recursive: true, force: true });
@@ -425,7 +472,7 @@ app.post("/api/pair", async (req, res) => {
     }
 });
 
-// 5. Lancement du serveur et auto-reconnexion
+// 6. Lancement du serveur
 app.listen(PORT, async () => {
     console.log(`🌐 Serveur Kyrox-MD actif sur le port ${PORT}`);
     loadCommands();
