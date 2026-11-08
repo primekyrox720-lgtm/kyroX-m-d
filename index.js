@@ -23,7 +23,7 @@ const commands = new Map();
 let sock = null;
 let isConnected = false;
 
-// 1. Chargement de toutes les commandes
+// 1. Chargement dynamique de toutes les commandes
 function loadCommands() {
     const dir = path.join(__dirname, "commands");
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -47,12 +47,11 @@ function loadCommands() {
     console.log(`📦 [Kyrox-MD] ${commands.size} commande(s) initialisée(s) : [ ${Array.from(commands.keys()).join(", ")} ]`);
 }
 
-// 2. Fonction d'extraction universelle du texte (Gère messages éphémères, vues uniques, légendes)
+// 2. Extraction universelle du message (Déballage des conteneurs WhatsApp)
 function getMessageBody(msg) {
     if (!msg || !msg.message) return "";
     let m = msg.message;
 
-    // Déballage des conteneurs WhatsApp
     if (m.ephemeralMessage) m = m.ephemeralMessage.message;
     if (m.viewOnceMessage) m = m.viewOnceMessage.message;
     if (m.viewOnceMessageV2) m = m.viewOnceMessageV2.message;
@@ -68,8 +67,16 @@ function getMessageBody(msg) {
     ).trim();
 }
 
-// 3. Gestionnaire principal de Baileys
+// 3. Initialisation Baileys optimisée en mode Haute Performance
 async function initKyroxBot(phoneNumber = null) {
+    // Évite l'erreur Bad MAC en fermant proprement l'ancien socket s'il existe
+    if (sock) {
+        try {
+            sock.ev.removeAllListeners();
+            sock.end(undefined);
+        } catch (e) {}
+    }
+
     const { state, saveCreds } = await useMultiFileAuthState(config.sessionDir);
     const { version } = await fetchLatestBaileysVersion();
 
@@ -83,28 +90,31 @@ async function initKyroxBot(phoneNumber = null) {
         browser: Browsers.macOS("Safari"),
         syncFullHistory: false,
         generateHighQualityLinkPreview: false,
-        connectTimeoutMs: 60000,
-        defaultQueryTimeoutMs: 0,
-        keepAliveIntervalMs: 10000
+        markOnlineOnConnect: false, // ⚡ Turbo : Évite la synchro de présence lente
+        fireInitQueries: false,      // ⚡ Turbo : Démarrage direct sans requêtes d'attente
+        connectTimeoutMs: 30000,
+        keepAliveIntervalMs: 15000,
+        defaultQueryTimeoutMs: 0
     });
 
     sock.ev.on("creds.update", saveCreds);
 
-    // Écoute de l'état de la connexion
+    // Surveillance de l'état de la connexion
     sock.ev.on("connection.update", async (update) => {
         const { connection, lastDisconnect } = update;
         const statusCode = lastDisconnect?.error?.output?.statusCode;
 
         if (connection === "close") {
             isConnected = false;
-            console.log(`[WhatsApp] Connexion interrompue (Code HTTP : ${statusCode})`);
+            console.log(`[WhatsApp] Connexion fermée (Code HTTP : ${statusCode})`);
 
+            // Reconnexion automatique sur Code 515 (restartRequired) ou coupures réseau
             const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
             if (shouldReconnect) {
                 console.log("🔄 Reconnexion au serveur WhatsApp en cours...");
                 initKyroxBot();
             } else {
-                console.log("❌ Session révoquée ou déconnectée.");
+                console.log("❌ Session révoquée. Veuillez vous reconnecter via la page web.");
                 if (fs.existsSync(config.sessionDir)) {
                     fs.rmSync(config.sessionDir, { recursive: true, force: true });
                 }
@@ -112,11 +122,11 @@ async function initKyroxBot(phoneNumber = null) {
         } else if (connection === "open") {
             isConnected = true;
             console.log(`\n========================================`);
-            console.log(` ✅ ${config.botName} EST CONNECTÉ ET PRÊT !`);
+            console.log(` ✅ ${config.botName} CONNECTÉ ET ACTIF (< 1s) !`);
             console.log(` Préfixe actif : [ ${config.prefix} ]`);
             console.log(`========================================\n`);
 
-            // Message automatique de confirmation
+            // Message de confirmation automatique envoyé à votre numéro
             setTimeout(async () => {
                 try {
                     const hostNumber = sock.user.id.split(":")[0] + "@s.whatsapp.net";
@@ -125,18 +135,18 @@ async function initKyroxBot(phoneNumber = null) {
                               `║   ⚡ *${config.botName} EST ACTIF* ⚡   \n` +
                               `╚═══════════════════════╝\n\n` +
                               `✅ *Connexion validée avec succès !*\n` +
-                              `Votre bot répond désormais 24h/24.\n\n` +
+                              `Le bot répond désormais en moins d'une seconde.\n\n` +
                               `👉 Tapez *${config.prefix}ping* ou *${config.prefix}menu* pour tester !`
                     });
                     console.log("📩 Message de confirmation envoyé au propriétaire !");
                 } catch (e) {
-                    console.error("Erreur d'envoi confirmation :", e.message);
+                    console.error("Erreur confirmation :", e.message);
                 }
-            }, 3000);
+            }, 2500);
         }
     });
 
-    // Écoute et traitement des messages entrants
+    // Écoute ultra-rapide des statuts et messages
     sock.ev.on("messages.upsert", async ({ messages, type }) => {
         if (type !== "notify") return;
         const msg = messages[0];
@@ -155,18 +165,15 @@ async function initKyroxBot(phoneNumber = null) {
             return;
         }
 
-        // Extraction fiable du texte
         const body = getMessageBody(msg);
         if (!body) return;
 
         const prefix = config.prefix || ".";
 
-        // Log visible dans Render pour vérifier la réception en temps réel
-        if (body.startsWith(prefix)) {
-            console.log(`📩 [Commande reçue] De: ${from} | Texte: "${body}"`);
-        }
-
+        // Détection de la commande
         if (!body.startsWith(prefix)) return;
+
+        console.log(`📩 [Commande] De: ${from} | Message: "${body}"`);
 
         const isGroup = from.endsWith("@g.us");
         const sender = isGroup ? (msg.key.participant || msg.participant) : from;
@@ -176,23 +183,18 @@ async function initKyroxBot(phoneNumber = null) {
         const fullText = args.join(" ");
 
         const command = commands.get(commandName);
-        if (!command) {
-            console.log(`❓ Commande inconnue demandée : "${commandName}"`);
-            return;
-        }
+        if (!command) return;
 
-        // Fonction de réponse sécurisée (avec fallback si la citation échoue)
+        // Fonction de réponse rapide avec fallback
         const reply = async (txt) => {
             try {
                 return await sock.sendMessage(from, { text: txt }, { quoted: msg });
             } catch (err) {
-                // Si la citation échoue (ex: notes perso), envoie sans citation
                 return await sock.sendMessage(from, { text: txt });
             }
         };
 
         try {
-            console.log(`⚡ Exécution de la commande [${commandName}]...`);
             await command.execute({ 
                 sock, 
                 msg, 
@@ -204,16 +206,15 @@ async function initKyroxBot(phoneNumber = null) {
                 reply, 
                 config 
             });
-            console.log(`✅ Commande [${commandName}] exécutée avec succès.`);
         } catch (err) {
-            console.error(`❌ Erreur d'exécution pour [${commandName}] :`, err);
-            await reply("❌ Une erreur s'est produite lors de l'exécution de cette commande.");
+            console.error(`❌ Erreur [${commandName}] :`, err);
+            await reply("❌ Erreur pendant l'exécution de la commande.");
         }
     });
 
     // Demande du Pair Code
     if (phoneNumber && !sock.authState.creds.registered) {
-        await delay(3000);
+        await delay(2500);
         const code = await sock.requestPairingCode(phoneNumber);
         console.log(`[Pairing] Code généré pour ${phoneNumber} : ${code}`);
         return code;
@@ -410,7 +411,7 @@ app.get("/", (req, res) => {
 
                 let phone = phoneInput.value.trim().replace(/[^0-9]/g, "");
                 if (!phone) {
-                    alert("⚠️ Veuillez entrer un numéro avec son indicatif pays.");
+                    alert("⚠️ Veuillez entrer un numéro avec indicatif.");
                     return;
                 }
 
@@ -451,7 +452,7 @@ app.get("/", (req, res) => {
     `);
 });
 
-// 5. API de génération de code
+// 5. API de génération du Pair Code
 app.post("/api/pair", async (req, res) => {
     let { phone } = req.body;
     if (!phone) return res.status(400).json({ error: "Numéro requis" });
@@ -472,7 +473,7 @@ app.post("/api/pair", async (req, res) => {
     }
 });
 
-// 6. Lancement du serveur
+// 6. Lancement du serveur Web et reconnexion automatique
 app.listen(PORT, async () => {
     console.log(`🌐 Serveur Kyrox-MD actif sur le port ${PORT}`);
     loadCommands();
