@@ -1,29 +1,34 @@
-# KYROX-MD
+# KYROX-MD — bot WhatsApp personnalisé
 
-Bot WhatsApp JavaScript/Node.js basé sur Baileys, avec pairing web, commandes modulaires, fonctions de groupe et automatisations configurables. Cette version rassemble les fonctions déjà présentes dans KYROX-MD et des idées de fonctionnalités publiquement décrites par XTREME-XMD, avec une implémentation adaptée à ce dépôt.
+Bot Node.js/Baileys avec page web de pairing conservée. Le moteur de commandes est désormais reparti sur une base personnalisée, indépendante des modules historiques.
 
-## Pairing web
+## Fonctions actuellement disponibles
 
-La page reprend le design de pairing KYROX-MD sans champ ni jeton supplémentaire. Le pairing est ouvert, avec une limite de fréquence, un seul pairing à la fois et une vérification qui empêche d'écraser une session déjà présente. Un code de pairing ne doit être demandé que pour un numéro dont vous êtes autorisé à associer le compte. Ne partagez jamais le code reçu.
+- Pairing web et endpoint de santé `/health` (la page et le serveur HTTP existants restent en place).
+- Commandes `.menu`, `.ping`, `.alive`, `.owner` et `.mode public|private`.
+- Modération de groupe `.tagall`, `.kick`, `.promote`, `.demote` avec vérification des permissions de l'utilisateur et du bot.
+- Automatisations `.welcome on|off`, `.antilink on|off` (par groupe), `.autoreact on|off` et `.readall on|off`; réglages persistés dans `data/bot-settings.json`.
+- Jeu de questions `.quiz` / `.answer`.
 
-## Fonctionnalités
+Les commandes historiques sont désactivées afin d'éviter de charger d'anciens modules. Les nouveaux modules sont écrits séparément et la page de pairing n'est pas modifiée.
 
-- Connexion multi-appareils Baileys, reconnexion avec délai progressif, restauration locale ou via `SESSION_ID`.
-- Interface de pairing web et endpoint de santé `/health`.
-- Chargement dynamique des commandes depuis `commands/`; `.reload` (administrateur) recharge les modules sans redémarrage.
-- Modes `.mode public|private|group|inbox` (administrateur); réglage en mémoire jusqu'au redémarrage.
-- `.ping`, `.alive`, `.owner`, `.menu`.
-- `.ai <question>` et `.tiktok <lien>` utilisent un service tiers.
-- `.s` transforme une image/vidéo en sticker (FFmpeg requis). `.vv` est désactivée afin de ne pas extraire ou redistribuer des médias à vue unique.
-- Groupe : `.tagall`, `.hidetag`, `.mute`, `.unmute`, `.kick`, `.promote`, `.demote`. Les opérations de modération requièrent un administrateur du groupe et que le bot soit administrateur.
-- Automatisations admin : `.welcome on|off|default` et `.antilink on|off|default` s'appliquent au groupe courant; `.autoreact on|off`, `.readall on|off` et `.automations [on|off]` sont globales.
-- Statuts configurables avec `AUTO_STATUS_VIEW`, `AUTO_STATUS_REACT` et `STATUS_REACT_EMOJI`.
-- Audit explicite des groupes avec `.up` et `.logs [1-30]`. Les messages suivis sont conservés en texte brut dans `logs/bot-audit.jsonl` et dans les logs du fournisseur. Informez les membres avant activation.
+## Sécurité et vie privée
 
-## Configuration
+- N'utilisez que des comptes/appareils que vous êtes autorisé à connecter.
+- Les automatisations sont désactivées par défaut et doivent être activées explicitement.
+- L'anti-lien ne modère que les liens d'invitation WhatsApp, et seulement si le bot est administrateur du groupe.
+- La récupération de messages supprimés, l'extraction de médias à vue unique et l'archivage silencieux de conversations ne sont pas inclus dans cette base. Toute fonctionnalité de conservation devra être transparente, explicitement activée et limitée.
+- Ne publiez jamais de codes de pairing ou de fichiers de session; protégez le stockage persistant et ne faites tourner qu'une instance par session.
 
-Valeurs par défaut du propriétaire : `Kyrox-dev` / `50946387298`. Principales variables : `OWNER_NAME`, `OWNER_NUMBER`, `ADMIN_NUMBERS`, `BOT_NAME`, `PREFIX`, `MODE`, `SESSION_ID`, `SESSION_DIR`, `WELCOME`, `ANTI_LINK`, `AUTO_REACT`, `READ_MESSAGE`, `AUTO_STATUS_VIEW`, `AUTO_STATUS_REACT`, `STATUS_REACT_EMOJI`, `CUSTOM_REACT_EMOJIS` et `MONITORED_DISCUSSIONS`.
+## Déploiement
 
-## Crédits et licences
+```sh
+npm install
+npm start
+```
 
-Développement et personnalisation de KYROX-MD : **Kyrox-dev**. L'inspiration fonctionnelle publique XTREME-XMD est créditée ici : https://github.com/PrinceXtremeX/XTREME-XMD. Cette mention ne transfère pas ses droits d'auteur à KYROX-MD. Toute réutilisation future de code du dépôt source doit se conformer à Apache License 2.0 et préserver les avis et notices applicables. Les dépendances tierces conservent leurs licences respectives.
+Configurez notamment `BOT_NAME`, `OWNER_NAME`, `OWNER_NUMBER`, `ADMIN_NUMBERS`, `PREFIX` et `SESSION_DIR`. Le répertoire de session doit être persistant sur l'hébergeur.
+
+## Référence fonctionnelle
+
+Le périmètre a été inspiré par les catégories publiquement décrites par [KHAN-MD](https://github.com/mrprincesys/KHAN-MD), sans reprendre son code. Cette première base n'implémente pas encore les intégrations IA/téléchargement ni les outils média avancés; elles nécessitent de définir leurs services et dépendances avant activation.
