@@ -6,7 +6,6 @@ const express = require("express");
 const pino = require("pino");
 const fs = require("fs");
 const path = require("path");
-const crypto = require("crypto");
 const config = require("./config");
 
 const app = express();
@@ -163,26 +162,20 @@ async function initBot(phoneNumber = null) {
     return null;
 }
 
-function validPairingToken(req) {
-    const expected = Buffer.from(config.pairingToken || "");
-    const supplied = Buffer.from(String(req.get("authorization") || "").replace(/^Bearer\\s+/i, ""));
-    return expected.length > 0 && supplied.length === expected.length && crypto.timingSafeEqual(supplied, expected);
-}
-
 function allowPairAttempt(ip) {
     const now = Date.now();
-    const old = pairAttempts.get(ip) || { count: 0, reset: now + 15 * 60 * 1000, last: 0 };
-    if (now > old.reset) { old.count = 0; old.reset = now + 15 * 60 * 1000; }
-    if (old.count >= 5 || now - old.last < 10000) { pairAttempts.set(ip, old); return false; }
-    old.count++;
-    old.last = now;
-    pairAttempts.set(ip, old);
+    const attempt = pairAttempts.get(ip) || { count: 0, reset: now + 15 * 60 * 1000, last: 0 };
+    if (now > attempt.reset) { attempt.count = 0; attempt.reset = now + 15 * 60 * 1000; }
+    if (attempt.count >= 5 || now - attempt.last < 10000) { pairAttempts.set(ip, attempt); return false; }
+    attempt.count++;
+    attempt.last = now;
+    pairAttempts.set(ip, attempt);
     return true;
 }
 
 app.get("/health", (req, res) => res.json({ ok: true, connected: Boolean(sock?.user), bot: config.botName }));
 
-// Page de pairing d'origine : le jeton est demandé au clic, sans champ visible sur la page.
+// Page de pairing originale : aucun champ ni jeton supplémentaire.
 app.get("/", (req, res) => {
     res.send(`
     <!DOCTYPE html>
@@ -236,12 +229,10 @@ app.get("/", (req, res) => {
             async function submitPair() {
                 const phone = document.getElementById("phone").value.trim().replace(/[^0-9]/g, "");
                 if (!phone) return alert("Veuillez entrer un numéro valide.");
-                const token = prompt("Entrez le jeton de pairing configuré par le propriétaire du bot :");
-                if (!token) return;
                 const btn = document.getElementById("btn");
                 btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> GÉNÉRATION...'; btn.disabled = true;
                 try {
-                    const res = await fetch("/api/pair", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token }, body: JSON.stringify({ phone }) });
+                    const res = await fetch("/api/pair", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone }) });
                     const data = await res.json();
                     if (data.code) { document.getElementById("resultBox").style.display = "block"; document.getElementById("codeText").innerText = data.code; }
                     else alert("❌ " + (data.error || "Erreur"));
@@ -254,9 +245,8 @@ app.get("/", (req, res) => {
     </html>`);
 });
 
+// Le pairing est ouvert, sans jeton. Des limites anti-abus et la protection de la session existante restent actives.
 app.post("/api/pair", async (req, res) => {
-    if (!config.pairingToken) return res.status(503).json({ error: "Pairing désactivé : le propriétaire doit configurer un jeton dans PAIRING_TOKEN." });
-    if (!validPairingToken(req)) return res.status(401).json({ error: "Jeton invalide." });
     const ip = req.ip || req.socket.remoteAddress || "unknown";
     if (!allowPairAttempt(ip)) return res.status(429).json({ error: "Trop de tentatives. Réessayez plus tard." });
     if (pairingInProgress || sock?.user) return res.status(409).json({ error: "Un bot est déjà connecté ou un pairing est en cours." });
@@ -281,5 +271,5 @@ app.listen(PORT, () => {
     restoreSessionIfAvailable();
     const creds = path.join(config.sessionDir, "creds.json");
     if (fs.existsSync(creds)) initBot().catch(error => console.error("Démarrage WhatsApp impossible :", error.message));
-    else console.log("Aucune session. Configurez PAIRING_TOKEN puis utilisez la page de pairing.");
+    else console.log("Aucune session. Ouvrez la page pour associer un compte WhatsApp.");
 });

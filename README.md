@@ -4,7 +4,7 @@ Bot WhatsApp JavaScript/Node.js basé sur Baileys, avec pairing web, commandes m
 
 ## Pairing web
 
-La page d'association reprend le style de la page originale KYROX-MD. Le jeton n'apparaît pas dans la page : il est demandé au clic sur « Obtenir mon code ». Configurez `PAIRING_TOKEN` dans les variables d'environnement de l'hébergement; aucune longueur minimale n'est imposée. Gardez-le privé. Le pairing est limité en fréquence, refuse les sessions déjà présentes et ne supprime pas les identifiants existants. Ne partagez jamais le code d'association WhatsApp.
+La page reprend le design de pairing KYROX-MD sans champ ni jeton supplémentaire. Le pairing est ouvert, avec une limite de fréquence, un seul pairing à la fois et une vérification qui empêche d'écraser une session déjà présente. Un code de pairing ne doit être demandé que pour un numéro dont vous êtes autorisé à associer le compte. Ne partagez jamais le code reçu.
 
 ## Fonctionnalités
 
@@ -22,7 +22,7 @@ La page d'association reprend le style de la page originale KYROX-MD. Le jeton n
 
 ## Configuration
 
-Valeurs par défaut du propriétaire : `Kyrox-dev` / `50946387298`. Principales variables : `OWNER_NAME`, `OWNER_NUMBER`, `ADMIN_NUMBERS`, `BOT_NAME`, `PREFIX`, `MODE`, `SESSION_ID`, `SESSION_DIR`, `PAIRING_TOKEN`, `WELCOME`, `ANTI_LINK`, `AUTO_REACT`, `READ_MESSAGE`, `AUTO_STATUS_VIEW`, `AUTO_STATUS_REACT`, `STATUS_REACT_EMOJI`, `CUSTOM_REACT_EMOJIS` et `MONITORED_DISCUSSIONS`.
+Valeurs par défaut du propriétaire : `Kyrox-dev` / `50946387298`. Principales variables : `OWNER_NAME`, `OWNER_NUMBER`, `ADMIN_NUMBERS`, `BOT_NAME`, `PREFIX`, `MODE`, `SESSION_ID`, `SESSION_DIR`, `WELCOME`, `ANTI_LINK`, `AUTO_REACT`, `READ_MESSAGE`, `AUTO_STATUS_VIEW`, `AUTO_STATUS_REACT`, `STATUS_REACT_EMOJI`, `CUSTOM_REACT_EMOJIS` et `MONITORED_DISCUSSIONS`.
 
 ## Crédits et licences
 

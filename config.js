@@ -14,7 +14,6 @@ module.exports = {
     mode: (process.env.MODE || "public").toLowerCase(),
     sessionId: process.env.SESSION_ID || "",
     sessionDir: process.env.SESSION_DIR || "./session",
-    pairingToken: process.env.PAIRING_TOKEN || "",
     monitoredDiscussions: (process.env.MONITORED_DISCUSSIONS || "").split(",").map(v => v.trim()).filter(Boolean),
     adminNumbers: (process.env.ADMIN_NUMBERS || ownerNumber).split(",").map(v => v.trim()).filter(Boolean),
     AUTO_STATUS_VIEW: envBool("AUTO_STATUS_VIEW", true),
