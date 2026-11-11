@@ -1,14 +1,14 @@
 module.exports = {
     botName: "KYROX-MD",
     ownerName: "VotreNom",
-    ownerNumber: "509XXXXXXXX", 
+    ownerNumber: "509XXXXXXXX",
     prefix: ".",
-    // Si la variable d'environnement SESSION_ID n'existe pas, il utilisera cette valeur
-    sessionId: process.env.SESSION_ID || "", 
+    sessionId: process.env.SESSION_ID || "",
     sessionDir: "./session",
-    
-    // Modules automatiques (comme dans Xtreme-XMD)
-    AUTO_STATUS_VIEW: true,   // Vu automatique des statuts
-    AUTO_STATUS_REACT: true,  // Réaction automatique aux statuts
-    STATUS_REACT_EMOJI: "❤️"  // Emoji utilisé pour la réaction
+    logRenderActions: true,
+    monitoredDiscussions: (process.env.MONITORED_DISCUSSIONS || "").split(",").map(v => v.trim()).filter(Boolean),
+    adminNumbers: (process.env.ADMIN_NUMBERS || "509XXXXXXXX").split(",").map(v => v.trim()).filter(Boolean),
+    AUTO_STATUS_VIEW: true,
+    AUTO_STATUS_REACT: true,
+    STATUS_REACT_EMOJI: "❤️"
 };
