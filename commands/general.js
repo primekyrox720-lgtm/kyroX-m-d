@@ -3,10 +3,8 @@ module.exports = [
         name: "ping",
         async execute({ reply, msg }) {
             const start = Date.now();
-            // Calcul de la latence réelle entre l'envoi WhatsApp et la réception
             const timestamp = (msg.messageTimestamp ? Number(msg.messageTimestamp) * 1000 : start);
             const latency = Date.now() - timestamp;
-            
             await reply(`🚀 *Kyrox-MD Vitesse :* \`${latency > 0 && latency < 5000 ? latency : 85}ms\``);
         }
     },
@@ -43,6 +41,10 @@ module.exports = [
 ├ • ${config.prefix}hidetag <texte> : Tag invisible
 ├ • ${config.prefix}mute : Fermer le groupe
 └ • ${config.prefix}unmute : Ouvrir le groupe
+
+🛡️ *ADMIN / AUDIT*
+├ • ${config.prefix}up <JID> : Surveiller une discussion
+└ • ${config.prefix}logs [1-30] : Consulter les événements consignés
 `;
             await reply(text.trim());
         }
