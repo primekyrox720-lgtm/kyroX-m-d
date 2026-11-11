@@ -1,6 +1,6 @@
 {
   "name": "kyrox-md",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Bot WhatsApp personnalisé avec pairing web intégré",
   "main": "index.js",
   "scripts": {
@@ -10,6 +10,7 @@
     "@whiskeysockets/baileys": "^6.7.12",
     "axios": "^1.7.2",
     "express": "^4.19.2",
+    "google-tts-api": "^2.0.2",
     "pino": "^9.1.0",
     "wa-sticker-formatter": "^4.4.4"
   }

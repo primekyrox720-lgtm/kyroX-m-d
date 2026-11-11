@@ -1,28 +1,28 @@
 # KYROX-MD — bot WhatsApp personnalisé
 
-Base personnalisée en Node.js/Baileys avec page web de pairing préservée. Les commandes historiques ont été désactivées et remplacées par une base modulaire développée pour ce projet, en s'inspirant des catégories de fonctionnalités publiquement annoncées par KHAN-MD, sans recopier son implémentation.
+Base personnalisée en Node.js/Baileys avec page web de pairing préservée. La base comprend des commandes inspirées des catégories publiquement documentées par Knightbot-MD, sans reprendre son code source.
 
-## Commandes
+## Commandes disponibles
 
 - Général : `.menu`, `.ping`, `.alive`, `.owner`, `.mode public|private`.
-- IA : `.ai <question>` via une API compatible OpenAI configurée par variables d'environnement.
-- Traduction : `.translate <texte>` via service configuré.
-- Média : `.sticker` à envoyer en légende d'une image/vidéo, `.download <URL>` via service configuré et limité aux plateformes vidéo courantes.
-- Groupes : `.tagall`, `.kick`, `.promote`, `.demote`, `.mute`, `.unmute`; les actions vérifient les permissions du demandeur et celles du bot.
-- Automatisations : `.welcome on|off`, `.antilink on|off` (par groupe), `.autoreact on|off`, `.readall on|off`; réglages persistés dans `data/bot-settings.json`.
-- Jeux : `.quiz` puis `.answer <réponse>`.
+- IA / utilitaires : `.ai <question>`, `.translate <texte>`, `.tts <texte>` (TTS limité à 200 caractères, service externe).
+- Média : `.sticker` avec image/vidéo en légende; `.download <URL>` via un service média configuré.
+- Groupes : `.tagall`, `.kick`, `.promote`, `.demote`, `.mute`, `.unmute`.
+- Modération : `.welcome on|off`, `.antilink on|off`, `.warn @membre [motif]`, `.warnings [@membre]`, `.resetwarns @membre`.
+- Jeux : `.quiz` / `.answer`; morpion à deux joueurs `.ttt @membre` puis `.move 1-9`, `.ttt stop` pour terminer.
+- Automatisations : `.autoreact on|off`, `.readall on|off`; réglages persistés dans `data/bot-settings.json`. Les avertissements sont conservés dans `data/group-warnings.json`.
 
-Les écouteurs d'automatisation s'attachent lors de l'utilisation d'une commande; lancez `.menu` après connexion pour les activer. Les automatisations sont désactivées par défaut sauf si leur variable d'environnement correspondante est activée.
+Les opérations d'administration de groupe vérifient les permissions et requièrent un bot administrateur lorsque l'action modifie les membres ou la configuration du groupe. Les avertissements n'entraînent jamais d'expulsion automatique.
 
 ## Configuration
 
 Variables utiles : `BOT_NAME`, `OWNER_NAME`, `OWNER_NUMBER`, `ADMIN_NUMBERS`, `PREFIX`, `SESSION_DIR`, `AI_API_URL`, `AI_API_KEY`, `AI_MODEL`, `TRANSLATE_API_URL`, `MEDIA_API_URL`, `WELCOME`, `ANTI_LINK`, `AUTO_REACT`, `READ_MESSAGE`.
 
-Les services IA, traduction et médias sont externes et doivent être configurés par l'administrateur. N'envoyez pas de clés API ni de données personnelles à un service tiers sans en connaître les conditions de traitement. `MEDIA_API_URL` doit être un service de confiance.
+L'IA, la traduction et le téléchargement dépendent des services externes configurés par l'administrateur. N'envoyez pas de secrets ou de données personnelles à des tiers sans en connaître le traitement. Les fonctions TTS envoient le texte au service de synthèse externe; n'y soumettez pas de contenu privé.
 
-## Limites de confidentialité
+## Vie privée et limites
 
-La récupération automatique de messages supprimés, l'extraction de médias à vue unique, la collecte cachée de conversations et le blocage automatisé des appels ne sont pas inclus. Baileys est un client non officiel; l'utilisation doit respecter les règles WhatsApp et les droits des membres des groupes. Les téléchargements doivent respecter les droits d'auteur et les conditions des plateformes.
+Le pairing web est conservé. La récupération automatique des messages supprimés, l'extraction de médias à vue unique et l'archivage caché de conversations ne sont pas inclus. Baileys est un client non officiel; respectez les règles WhatsApp, le consentement des membres et les droits d'auteur.
 
 ## Démarrage
 
@@ -31,4 +31,4 @@ npm install
 npm start
 ```
 
-Configurez un stockage persistant pour `SESSION_DIR`, utilisez une seule instance par session et ne partagez jamais les codes de pairing ou les fichiers d'identifiants.
+Configurez un stockage persistant pour `SESSION_DIR`, une instance par session, et ne partagez jamais les codes ou fichiers d'authentification.
