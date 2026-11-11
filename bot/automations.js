@@ -34,7 +34,8 @@ async function setFeature(name, enabled, scope = "global") {
 
 function isEnabled(name, group) {
     if (group && Object.hasOwn(settings.groups[group] || {}, name)) return settings.groups[group][name];
-    return Boolean(settings.global[name]);
+    const envName = { welcome: "WELCOME", antilink: "ANTI_LINK", autoreact: "AUTO_REACT", readall: "READ_MESSAGE" }[name];
+    return envName ? ["1", "true", "yes", "on"].includes(String(process.env[envName] || "false").toLowerCase()) : false;
 }
 
 function textOf(message) {
@@ -95,6 +96,5 @@ function checkQuizAnswer(chat, value) {
     quizzes.delete(chat);
     return true;
 }
-function getPrefix() { return process.env.PREFIX || "."; }
 
-module.exports = { attach, setFeature, setQuizAnswer, checkQuizAnswer, getPrefix };
+module.exports = { attach, setFeature, setQuizAnswer, checkQuizAnswer };

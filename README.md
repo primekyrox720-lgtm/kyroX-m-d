@@ -1,34 +1,34 @@
 # KYROX-MD — bot WhatsApp personnalisé
 
-Bot Node.js/Baileys avec page web de pairing conservée. Le moteur de commandes est désormais reparti sur une base personnalisée, indépendante des modules historiques.
+Base personnalisée en Node.js/Baileys avec page web de pairing préservée. Les commandes historiques ont été désactivées et remplacées par une base modulaire développée pour ce projet, en s'inspirant des catégories de fonctionnalités publiquement annoncées par KHAN-MD, sans recopier son implémentation.
 
-## Fonctions actuellement disponibles
+## Commandes
 
-- Pairing web et endpoint de santé `/health` (la page et le serveur HTTP existants restent en place).
-- Commandes `.menu`, `.ping`, `.alive`, `.owner` et `.mode public|private`.
-- Modération de groupe `.tagall`, `.kick`, `.promote`, `.demote` avec vérification des permissions de l'utilisateur et du bot.
-- Automatisations `.welcome on|off`, `.antilink on|off` (par groupe), `.autoreact on|off` et `.readall on|off`; réglages persistés dans `data/bot-settings.json`.
-- Jeu de questions `.quiz` / `.answer`.
+- Général : `.menu`, `.ping`, `.alive`, `.owner`, `.mode public|private`.
+- IA : `.ai <question>` via une API compatible OpenAI configurée par variables d'environnement.
+- Traduction : `.translate <texte>` via service configuré.
+- Média : `.sticker` à envoyer en légende d'une image/vidéo, `.download <URL>` via service configuré et limité aux plateformes vidéo courantes.
+- Groupes : `.tagall`, `.kick`, `.promote`, `.demote`, `.mute`, `.unmute`; les actions vérifient les permissions du demandeur et celles du bot.
+- Automatisations : `.welcome on|off`, `.antilink on|off` (par groupe), `.autoreact on|off`, `.readall on|off`; réglages persistés dans `data/bot-settings.json`.
+- Jeux : `.quiz` puis `.answer <réponse>`.
 
-Les commandes historiques sont désactivées afin d'éviter de charger d'anciens modules. Les nouveaux modules sont écrits séparément et la page de pairing n'est pas modifiée.
+Les écouteurs d'automatisation s'attachent lors de l'utilisation d'une commande; lancez `.menu` après connexion pour les activer. Les automatisations sont désactivées par défaut sauf si leur variable d'environnement correspondante est activée.
 
-## Sécurité et vie privée
+## Configuration
 
-- N'utilisez que des comptes/appareils que vous êtes autorisé à connecter.
-- Les automatisations sont désactivées par défaut et doivent être activées explicitement.
-- L'anti-lien ne modère que les liens d'invitation WhatsApp, et seulement si le bot est administrateur du groupe.
-- La récupération de messages supprimés, l'extraction de médias à vue unique et l'archivage silencieux de conversations ne sont pas inclus dans cette base. Toute fonctionnalité de conservation devra être transparente, explicitement activée et limitée.
-- Ne publiez jamais de codes de pairing ou de fichiers de session; protégez le stockage persistant et ne faites tourner qu'une instance par session.
+Variables utiles : `BOT_NAME`, `OWNER_NAME`, `OWNER_NUMBER`, `ADMIN_NUMBERS`, `PREFIX`, `SESSION_DIR`, `AI_API_URL`, `AI_API_KEY`, `AI_MODEL`, `TRANSLATE_API_URL`, `MEDIA_API_URL`, `WELCOME`, `ANTI_LINK`, `AUTO_REACT`, `READ_MESSAGE`.
 
-## Déploiement
+Les services IA, traduction et médias sont externes et doivent être configurés par l'administrateur. N'envoyez pas de clés API ni de données personnelles à un service tiers sans en connaître les conditions de traitement. `MEDIA_API_URL` doit être un service de confiance.
+
+## Limites de confidentialité
+
+La récupération automatique de messages supprimés, l'extraction de médias à vue unique, la collecte cachée de conversations et le blocage automatisé des appels ne sont pas inclus. Baileys est un client non officiel; l'utilisation doit respecter les règles WhatsApp et les droits des membres des groupes. Les téléchargements doivent respecter les droits d'auteur et les conditions des plateformes.
+
+## Démarrage
 
 ```sh
 npm install
 npm start
 ```
 
-Configurez notamment `BOT_NAME`, `OWNER_NAME`, `OWNER_NUMBER`, `ADMIN_NUMBERS`, `PREFIX` et `SESSION_DIR`. Le répertoire de session doit être persistant sur l'hébergeur.
-
-## Référence fonctionnelle
-
-Le périmètre a été inspiré par les catégories publiquement décrites par [KHAN-MD](https://github.com/mrprincesys/KHAN-MD), sans reprendre son code. Cette première base n'implémente pas encore les intégrations IA/téléchargement ni les outils média avancés; elles nécessitent de définir leurs services et dépendances avant activation.
+Configurez un stockage persistant pour `SESSION_DIR`, utilisez une seule instance par session et ne partagez jamais les codes de pairing ou les fichiers d'identifiants.
