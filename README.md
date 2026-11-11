@@ -1,32 +1,31 @@
 # KYROX-MD
 
-Bot WhatsApp JavaScript/Node.js utilisant Baileys, avec interface web de pairing, commandes et automatisations configurables.
+Bot WhatsApp JavaScript/Node.js basé sur Baileys, avec pairing web, commandes modulaires, fonctions de groupe et automatisations configurables. Cette version rassemble les fonctions déjà présentes dans KYROX-MD et des idées de fonctionnalités publiquement décrites par XTREME-XMD, avec une implémentation adaptée à ce dépôt.
 
 ## Fonctionnalités
 
-- Connexion multi-appareils Baileys, pairing web et restauration de session via `SESSION_ID`.
-- Commandes `.ping`, `.alive` et `.menu`.
-- `.ai <question>` via un service externe et `.tiktok <lien>` pour récupérer une vidéo TikTok via un service externe.
-- Stickers avec `.s` (répondre à une image ou vidéo) et affichage d’un média à vue unique avec `.vv`.
-- Outils de groupe : `.tagall`, `.hidetag`, `.mute`, `.unmute`.
-- Automatisations à activer dans WhatsApp par le propriétaire ou un administrateur configuré : `.welcome on|off`, `.antilink on|off`, `.autoreact on|off`, `.readall on|off` et `.automations on|off`.
-  - `.welcome` envoie un message lors des arrivées et départs.
-  - `.antilink` supprime les liens d’invitation WhatsApp dans les groupes où le bot est administrateur. Elle ne retire pas les membres.
-  - `.autoreact` réagit avec un emoji de la liste configurée.
-  - `.readall` marque les nouveaux messages comme lus. Ces deux options sont désactivées par défaut.
-- Surveillance/audit explicite des groupes avec `.up` et consultation des derniers événements avec `.logs`. Les administrateurs sont contrôlés par `ADMIN_NUMBERS` et le propriétaire.
-- Chargement dynamique des fichiers de commandes JavaScript du dossier `commands/`.
+- Connexion multi-appareils Baileys, reconnexion avec délai progressif, restauration locale ou via `SESSION_ID`.
+- Interface de pairing web protégée par `PAIRING_TOKEN`; endpoint de santé `/health`.
+- Chargement dynamique des commandes depuis `commands/`; `.reload` (administrateur) recharge les modules sans redémarrage.
+- Modes `.mode public|private|group|inbox` (administrateur); réglage en mémoire jusqu'au redémarrage.
+- `.ping`, `.alive`, `.owner`, `.menu`.
+- `.ai <question>` et `.tiktok <lien>` utilisent un service tiers.
+- `.s` transforme une image/vidéo en sticker (FFmpeg requis). `.vv` est désactivée afin de ne pas extraire ou redistribuer des médias à vue unique.
+- Groupe : `.tagall`, `.hidetag`, `.mute`, `.unmute`, `.kick`, `.promote`, `.demote`. Les opérations de modération requièrent un administrateur du groupe et que le bot soit administrateur.
+- Automatisations admin : `.welcome on|off|default` et `.antilink on|off|default` s'appliquent au groupe courant; `.autoreact on|off`, `.readall on|off` et `.automations [on|off]` sont globales. Ces choix de commande sont en mémoire et reviennent aux valeurs configurées après redémarrage.
+- Vue/réaction des statuts configurables avec `AUTO_STATUS_VIEW`, `AUTO_STATUS_REACT` et `STATUS_REACT_EMOJI`.
+- Audit de groupe explicite : `.up` active l'enregistrement dans une discussion de groupe, `.up off` le désactive dans la discussion courante, `.logs [1-30]` consulte les derniers événements. Les messages des groupes surveillés sont conservés en texte brut dans `logs/bot-audit.jsonl` et dans les logs du fournisseur. Informez les membres avant activation et respectez les règles locales de confidentialité.
 
-Les options des commandes d’automatisation sont conservées en mémoire et reviennent aux valeurs par défaut au redémarrage. `WELCOME`, `ANTI_LINK`, `AUTO_REACT` et `READ_MESSAGE` peuvent définir leurs états initiaux via variables d’environnement (true/false). `OWNER_NAME`, `OWNER_NUMBER`, `BOT_NAME`, `PREFIX` et `ADMIN_NUMBERS` sont également configurables.
+## Mise en route
 
-## Configuration
+1. Installez Node.js et FFmpeg, puis lancez `npm install` et `npm start`.
+2. Définissez `PAIRING_TOKEN` comme secret aléatoire d'au moins 24 caractères (recommandé : 32+). Sans ce secret, le pairing web est désactivé. Ouvrez ensuite la page `/`, saisissez le numéro au format international et ce secret.
+3. Gardez `SESSION_ID` et les fichiers du dossier `session/` privés. Le bot ne renvoie ni n'affiche de sauvegarde de session. Le pairing ne supprime jamais une session existante.
 
-Valeurs par défaut du propriétaire : `Kyrox-dev` / `50946387298`. Configurez `ADMIN_NUMBERS` avec une liste de numéros séparés par des virgules pour ajouter des administrateurs.
+Variables principales : `OWNER_NAME` (défaut `Kyrox-dev`), `OWNER_NUMBER` (défaut `50946387298`), `ADMIN_NUMBERS` (liste séparée par virgules), `BOT_NAME`, `PREFIX`, `MODE`, `SESSION_ID`, `SESSION_DIR`, `PAIRING_TOKEN`, `WELCOME`, `ANTI_LINK`, `AUTO_REACT`, `READ_MESSAGE`, `AUTO_STATUS_VIEW`, `AUTO_STATUS_REACT`, `STATUS_REACT_EMOJI`, `CUSTOM_REACT_EMOJIS`, `MONITORED_DISCUSSIONS`.
 
-Les messages de groupes surveillés sont journalisés en texte brut dans `logs/bot-audit.jsonl` et dans les logs du service. Prévenez les membres et respectez les règles de confidentialité applicables avant d’activer cette fonction. `MONITORED_DISCUSSIONS` accepte des JID séparés par des virgules pour une activation au démarrage.
+`MODE=public` autorise les commandes à tous; `private` réserve les commandes aux admins; `group` limite les commandes aux groupes; `inbox` aux discussions privées. Les changements via `.mode` ne sont pas persistés après redémarrage. Les commandes de changement de mode et rechargement restent accessibles aux admins.
 
-## Inspirations et crédits
+## Crédits et licences
 
-Les fonctions générales de ce bot combinent ses commandes existantes avec des idées de fonctionnalités publiquement décrites par [XTREME-XMD](https://github.com/PrinceXtremeX/XTREME-XMD). Cette intégration est une implémentation adaptée à KYROX-MD, et non une copie de leur dépôt. Le projet source XTREME-XMD est sous licence Apache-2.0 ; toute réutilisation future de son code devra conserver les avis de copyright et respecter cette licence.
-
-Développement et personnalisation de cette version : **Kyrox-dev**. Cette mention ne transfère ni ne remplace les droits des auteurs des projets ou dépendances tiers.
+Développement et personnalisation de KYROX-MD : **Kyrox-dev**. L'inspiration fonctionnelle publique XTREME-XMD est créditée ici : https://github.com/PrinceXtremeX/XTREME-XMD. Cette mention ne transfère pas ses droits d'auteur à KYROX-MD. Aucun code XTREME-XMD n'est inclus dans cette intégration. Toute réutilisation future de code du dépôt source doit se conformer à Apache License 2.0 et préserver les avis de copyright, la licence et les notices applicables. Les dépendances tierces conservent leurs licences respectives.
